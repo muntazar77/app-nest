@@ -5,5 +5,5 @@ export class LoginDto {
   email!: string; // email الآن (لاحقاً نضيف employeeNumber)
 
   @IsString()
-  password!: string;
+  passwordHash!: string;
 }

@@ -17,10 +17,10 @@ export class AuthService {
     const existUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existUser) throw new BadRequestException('Email already in use');
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const passwordHash = await bcrypt.hash(dto.passwordHash, 12);
 
     const user = await this.prisma.user.create({
-      data: { email: dto.email, password: passwordHash },
+      data: { email: dto.email, passwordHash },
       select: { id: true, email: true, createdAt: true },
     });
 
@@ -35,7 +35,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const ok = await bcrypt.compare(dto.password, user.password);
+    const ok = await bcrypt.compare(dto.passwordHash, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
     const payload = { sub: user.id, email: user.email };

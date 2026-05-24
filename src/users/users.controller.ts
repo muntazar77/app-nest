@@ -10,27 +10,29 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CheckPolicies } from '../common/casl/check-policies.decorator';
+import { PoliciesGuard } from 'src/common/guards/policies.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   create(@Body() bodyData: any) {
     return this.usersService.create(bodyData);
   }
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get()
+  @UseGuards(JwtAuthGuard, PoliciesGuard)
   @CheckPolicies((ability) => ability.can('read', 'User'))
   findAll() {
     return this.usersService.findAll();
   }
-
+  @UseGuards(JwtAuthGuard, PoliciesGuard)
+  @CheckPolicies((ability) => ability.can('read', 'User'))
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
@@ -47,7 +49,7 @@ export class UsersController {
   }
 
   @Get()
-  @CheckPolicies((ability) => ability.can('read', 'User'))
+  // @CheckPolicies((ability) => ability.can('read', 'User'))
   me(@Req() req: any) {
     // Only allowed if user has read:User permission
     return req.user;
