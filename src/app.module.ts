@@ -1,15 +1,14 @@
 import { Module } from '@nestjs/common';
 
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
-import { AuthModule } from './auth/auth.module';
-import { PostsModule } from './posts/posts.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { PostsModule } from './modules/posts/posts.module';
 import { ConfigModule } from '@nestjs/config';
 
 import { CaslAbilityFactory } from './common/casl/casl-ability.factory';
-import { PoliciesGuard } from './common/guards/policies.guard';
-import { APP_GUARD } from '@nestjs/core';
+import { PermissionsModule } from './modules/permissions/permissions.module';
 
 @Module({
   imports: [
@@ -17,10 +16,12 @@ import { APP_GUARD } from '@nestjs/core';
     PrismaModule,
     AuthModule,
     PostsModule,
+    PermissionsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       // envFilePath: '.env', // optional
     }),
+    PermissionsModule,
   ],
   controllers: [],
   providers: [PrismaService, CaslAbilityFactory],

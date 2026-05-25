@@ -12,8 +12,11 @@ import {
 import { UsersService } from './users.service';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CheckPolicies } from '../common/casl/check-policies.decorator';
+import { CheckPolicies } from '../../common/casl/check-policies.decorator';
 import { PoliciesGuard } from 'src/common/guards/policies.guard';
+
+@UseGuards(JwtAuthGuard, PoliciesGuard)
+  @CheckPolicies((ability) => ability.can('read', 'User'))
 
 @Controller('users')
 export class UsersController {
@@ -26,13 +29,11 @@ export class UsersController {
   }
   // @UseGuards(JwtAuthGuard)
   @Get()
-  @UseGuards(JwtAuthGuard, PoliciesGuard)
-  @CheckPolicies((ability) => ability.can('read', 'User'))
+  
   findAll() {
     return this.usersService.findAll();
   }
-  @UseGuards(JwtAuthGuard, PoliciesGuard)
-  @CheckPolicies((ability) => ability.can('read', 'User'))
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
