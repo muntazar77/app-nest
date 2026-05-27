@@ -16,8 +16,7 @@ import { CheckPolicies } from '../../common/casl/check-policies.decorator';
 import { PoliciesGuard } from 'src/common/guards/policies.guard';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
-  @CheckPolicies((ability) => ability.can('read', 'User'))
-
+@CheckPolicies((ability) => ability.can('manage', 'all'))
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -29,7 +28,6 @@ export class UsersController {
   }
   // @UseGuards(JwtAuthGuard)
   @Get()
-  
   findAll() {
     return this.usersService.findAll();
   }
@@ -49,10 +47,22 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  @Get()
-  // @CheckPolicies((ability) => ability.can('read', 'User'))
-  me(@Req() req: any) {
-    // Only allowed if user has read:User permission
-    return req.user;
+  @Post(':userId/roles/:roleId')
+  assignRole(@Param('userId') userId: string, @Param('roleId') roleId: string) {
+    return this.usersService.assignRole(userId, roleId);
+  }
+
+  @Delete(':userId/roles/:roleId')
+  unassignRole(
+    @Param('userId') userId: string,
+    @Param('roleId') roleId: string,
+    @Req() req: any,
+  ) {
+    return this.usersService.unassignRole(userId, roleId, req.user?.id);
+  }
+
+  @Get(':userId/roles')
+  getUserRoles(@Param('userId') userId: string) {
+    return this.usersService.getUserRoles(userId);
   }
 }

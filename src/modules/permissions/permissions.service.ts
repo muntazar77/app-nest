@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException,ForbiddenException } from '@nestjs/common';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -49,10 +49,13 @@ export class PermissionsService {
     }
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.permission.delete({
-      where: { id },
-    });
+async remove(id: string) {
+  const perm = await this.findOne(id);
+
+  if (perm.action === 'manage' && perm.subject === 'all') {
+    throw new ForbiddenException('manage:all permission cannot be deleted');
   }
+
+  return this.prisma.permission.delete({ where: { id } });
+}
 }

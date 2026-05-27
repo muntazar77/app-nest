@@ -4,68 +4,72 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.error('DATABASE_URL is not set. Set it in .env before running the seed.');
-  process.exit(1);
-}
+if (!connectionString) process.exit(1);
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 async function main() {
   const passwordHash = await bcrypt.hash('password123', 10);
 
-  // Clean up existing data (dev only)
-  await prisma.rolePermission.deleteMany();
-  await prisma.userRole.deleteMany();
-  await prisma.permission.deleteMany();
-  await prisma.role.deleteMany();
-  await prisma.user.deleteMany();
+  // 1) Ensure permissions (upsert by unique action+subject)
+  const perms = [
+    { action: 'manage', subject: 'all', title: 'Full access' },
+    { action: 'read', subject: 'User', title: 'Read users' },
+    { action: 'create', subject: 'User', title: 'Create users' },
+    { action: 'update', subject: 'User', title: 'Update users' },
+    { action: 'delete', subject: 'User', title: 'Delete users' },
+    { action: 'read', subject: 'Role', title: 'Read roles' },
+    { action: 'manage', subject: 'Role', title: 'Manage roles' },
+    { action: 'read', subject: 'Permission', title: 'Read permissions' },
+    { action: 'manage', subject: 'Permission', title: 'Manage permissions' },
+  ] as const;
 
-  // Create permissions
-  const permissions = [
-    { action: 'manage', subject: 'all' },
-    { action: 'read', subject: 'User' },
-    { action: 'create', subject: 'User' },
-    { action: 'update', subject: 'User' },
-    { action: 'delete', subject: 'User' },
-  ];
-  const createdPermissions = [] as { id: string; action: string; subject: string }[];
-  for (const p of permissions) {
-    const perm = await prisma.permission.create({ data: p });
-    createdPermissions.push(perm);
+  const created: Awaited<ReturnType<typeof prisma.permission.upsert>>[] = [];
+  for (const p of perms) {
+    const perm = await prisma.permission.upsert({
+      where: { action_subject: { action: p.action, subject: p.subject } },
+      update: { title: p.title ?? null },
+      create: { action: p.action, subject: p.subject, title: p.title ?? null },
+    });
+    created.push(perm);
   }
 
-  // Create admin role
-  const adminRole = await prisma.role.create({
-    data: { name: 'admin', title: 'Administrator', isSystem: true },
+  // 2) Ensure admin role
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'admin' },
+    update: { title: 'Administrator', isSystem: true },
+    create: { name: 'admin', title: 'Administrator', isSystem: true },
   });
 
-  // Attach manage:all to admin
-  const manageAll = createdPermissions.find((x) => x.action === 'manage' && x.subject === 'all');
-  if (manageAll) {
-    await prisma.rolePermission.create({ data: { roleId: adminRole.id, permissionId: manageAll.id } });
-  }
+  // 3) Ensure manage:all attached to admin
+  const manageAll = created.find((x) => x.action === 'manage' && x.subject === 'all');
+  if (!manageAll) throw new Error('manage:all permission missing');
 
-  // Create users
-  const adminUser = await prisma.user.create({
-    data: { email: 'admin@example.com', passwordHash },
-  });
-  const regularUser = await prisma.user.create({
-    data: { email: 'user@example.com', passwordHash },
+  await prisma.rolePermission.upsert({
+    where: { roleId_permissionId: { roleId: adminRole.id, permissionId: manageAll.id } },
+    update: {},
+    create: { roleId: adminRole.id, permissionId: manageAll.id },
   });
 
-  // Assign admin role to admin user (key for RBAC)
-  await prisma.userRole.create({ data: { userId: adminUser.id, roleId: adminRole.id } });
+  // 4) Ensure admin user + assign admin role
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: {}, // optional: don't overwrite password automatically
+    create: { email: 'admin@example.com', passwordHash },
+  });
 
-  console.log('Seed completed: created users, roles, permissions.');
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
+    update: {},
+    create: { userId: adminUser.id, roleId: adminRole.id },
+  });
+
+  console.log('Seed OK: admin role + manage:all + admin user ensured');
 }
 
 main()
-  .catch((err) => {
-    console.error('Seed failed:', err);
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(async () => prisma.$disconnect());

@@ -9,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { CaslAbilityFactory } from './common/casl/casl-ability.factory';
 import { PermissionsModule } from './modules/permissions/permissions.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
       // envFilePath: '.env', // optional
     }),
     PermissionsModule,
+    RolesModule,
   ],
   controllers: [],
   providers: [PrismaService, CaslAbilityFactory],
