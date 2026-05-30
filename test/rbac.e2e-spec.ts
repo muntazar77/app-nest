@@ -13,8 +13,8 @@ describe('RBAC (e2e)', () => {
   let app: INestApplication;
 
   // adjust if your login expects passwordHash (unusual). Prefer password.
-  const adminCreds = { email: 'admin@example.com', password: 'password123' };
-  const userCreds = { email: 'user@example.com', password: 'password123' };
+  const adminCreds = { email: 'admin@example.com', passwordHash: 'password123' };
+  const userCreds = { email: 'user@example.com', passwordHash: 'password123' };
 
   // If your API REALLY expects passwordHash instead of password,
   // change to:
