@@ -2,16 +2,40 @@ import { BadRequestException, Injectable, NotFoundException,ForbiddenException }
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
 
 
-  findAll() {
-    return this.prisma.permission.findMany({
-      orderBy: [{ subject: 'asc' }, { action: 'asc' }],
-    });
+  // findAll() {
+  //   return this.prisma.permission.findMany({
+  //     orderBy: [{ subject: 'asc' }, { action: 'asc' }],
+  //   });
+  // }
+
+  async findAll({ page = 1, limit = 20 }: PaginationDto) {
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.permission.findMany({
+        skip,
+        take: limit,
+        orderBy: [{ subject: 'asc' }, { action: 'asc' }],
+      }),
+      this.prisma.permission.count(),
+    ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {

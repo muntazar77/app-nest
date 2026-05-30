@@ -1,11 +1,22 @@
 // src/modules/employees/employees.controller.ts
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Query,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PoliciesGuard } from '../../common/guards/policies.guard';
 import { CheckPolicies } from '../../common/casl/check-policies.decorator';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @Controller('employees')
@@ -20,8 +31,8 @@ export class EmployeesController {
 
   @CheckPolicies((ability) => ability.can('read', 'Employee'))
   @Get()
-  findAll() {
-    return this.employeesService.findAll();
+  findAll(@Query() q: PaginationDto) {
+    return this.employeesService.findAll(q);
   }
 
   @CheckPolicies((ability) => ability.can('read', 'Employee'))

@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Put,
+  Query
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -16,6 +17,7 @@ import { CheckPolicies } from 'src/common/casl/check-policies.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PoliciesGuard } from 'src/common/guards/policies.guard';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @CheckPolicies((ability) => ability.can('read', 'all'))
@@ -28,10 +30,12 @@ export class RolesController {
     return this.rolesService.create(dto);
   }
 
-  @Get()
-  findAll() {
-    return this.rolesService.findAll();
-  }
+  
+
+    @Get()
+    findAll(@Query() q: PaginationDto) {
+        return this.rolesService.findAll(q);
+    }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

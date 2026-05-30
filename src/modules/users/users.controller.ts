@@ -8,12 +8,14 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CheckPolicies } from '../../common/casl/check-policies.decorator';
 import { PoliciesGuard } from '../../common/guards/policies.guard';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @Controller('users')
@@ -31,8 +33,8 @@ export class UsersController {
   @CheckPolicies((ability) => ability.can('read', 'User'))
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() q: PaginationDto) {
+      return this.usersService.findAll(q);
   }
 
   @CheckPolicies((ability) => ability.can('read', 'User'))

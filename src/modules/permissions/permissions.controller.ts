@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
@@ -14,6 +15,7 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { CheckPolicies } from 'src/common/casl/check-policies.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PoliciesGuard } from 'src/common/guards/policies.guard';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @CheckPolicies((ability) => ability.can('manage', 'all'))
@@ -27,8 +29,8 @@ export class PermissionsController {
   }
 
   @Get()
-  findAll() {
-    return this.permissionsService.findAll();
+  findAll( @Query() q: PaginationDto) {
+    return this.permissionsService.findAll(q);
   }
 
   @Get(':id')

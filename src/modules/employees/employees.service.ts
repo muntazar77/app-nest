@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class EmployeesService {
@@ -28,13 +29,30 @@ export class EmployeesService {
     });
   }
 
-  async findAll() {
-    return this.prisma.employee.findMany({
+async findAll({ page = 1, limit = 20 }: PaginationDto) {
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await this.prisma.$transaction([
+    this.prisma.employee.findMany({
       where: { isActive: true },
-      include: { user: { select: { id: true, email: true } } },
+      skip,
+      take: limit,
       orderBy: { createdAt: 'desc' },
-    });
-  }
+      include: { user: { select: { id: true, email: true } } },
+    }),
+    this.prisma.employee.count({ where: { isActive: true } }),
+  ]);
+
+  return {
+    items,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
 
   async findOne(id: string) {
     const emp = await this.prisma.employee.findFirst({

@@ -4,7 +4,6 @@ import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
 import { AuthModule } from './modules/auth/auth.module';
-import { PostsModule } from './modules/posts/posts.module';
 import { ConfigModule } from '@nestjs/config';
 
 import { CaslAbilityFactory } from './common/casl/casl-ability.factory';
@@ -17,7 +16,6 @@ import { EmployeesModule } from './modules/employees/employees.module';
     UsersModule,
     PrismaModule,
     AuthModule,
-    PostsModule,
     PermissionsModule,
     ConfigModule.forRoot({
       isGlobal: true,

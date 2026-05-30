@@ -2,6 +2,7 @@ import { Injectable,ForbiddenException,NotFoundException,BadRequestException } f
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class UsersService {
@@ -18,28 +19,60 @@ export class UsersService {
     return res;
   }
 
-  findAll() {
-    return this.prisma.user.findMany();
-  }
+async findAll({ page = 1, limit = 20 }: PaginationDto) {
+  const skip = (page - 1) * limit;
+
+  const where = { isActive: true };
+
+  const [items, total] = await this.prisma.$transaction([
+    this.prisma.user.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        // لا ترجع passwordHash أبدًا
+      },
+    }),
+    this.prisma.user.count({ where }),
+  ]);
+
+  return {
+    items,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
 
   findOne(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id , isActive: true },
     });
   }
 
   update(id: string, data: any) {
     return this.prisma.user.update({
-      where: { id },
+      where: { id , isActive: true },
       data: data,
     });
   }
 
-  remove(id: string) {
-    return this.prisma.user.delete({
-      where: { id },
-    });
-  }
+ async remove(id: string) {
+  // اختياري: لا تسمح بحذف admin نفسه أو آخر admin
+  return this.prisma.user.update({
+    where: { id },
+    data: { isActive: false },
+  });
+}
 
 
 

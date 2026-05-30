@@ -2,6 +2,7 @@ import { Injectable,NotFoundException ,BadRequestException ,ForbiddenException} 
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class RolesService {
@@ -18,14 +19,41 @@ export class RolesService {
     }
   }
 
-  findAll() {
-    return this.prisma.role.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        rolePermissions: { include: { permission: true } },
-        userRoles: { include: { user: { select: { id: true, email: true } } } },
+  // findAll() {
+  //   return this.prisma.role.findMany({
+  //     orderBy: { name: 'asc' },
+  //     include: {
+  //       rolePermissions: { include: { permission: true } },
+  //       userRoles: { include: { user: { select: { id: true, email: true } } } },
+  //     },
+  //   });
+  // }
+
+  async findAll({ page = 1, limit = 20 }: PaginationDto) {
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.role.findMany({
+        skip,
+        take: limit,
+        orderBy: { name: 'asc' },
+        include: {
+          rolePermissions: { include: { permission: true } },
+          userRoles: { include: { user: { select: { id: true, email: true } } } },
+        },
+      }),
+      this.prisma.role.count(),
+    ]);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   async findOne(id: string) {

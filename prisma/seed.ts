@@ -58,10 +58,24 @@ async function main() {
     create: { email: 'admin@example.com', passwordHash },
   });
 
+
   await prisma.userRole.upsert({
     where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
     update: {},
     create: { userId: adminUser.id, roleId: adminRole.id },
+  });
+
+  // 4b) Ensure regular user
+  const regularUser = await prisma.user.upsert({
+    where: { email: 'user@example.com' },
+    update: {},
+    create: { email: 'user@example.com', passwordHash },
+  });
+
+  await prisma.employee.upsert({
+    where: { userId: regularUser.id },
+    update: { isActive: true, firstName: 'Regular', lastName: 'User' },
+    create: { userId: regularUser.id, firstName: 'Regular', lastName: 'User', isActive: true },
   });
 
   await prisma.employee.upsert({
