@@ -21,6 +21,7 @@ model User {
   posts        Post[]
   // role         String   @default("USER")
   userRoles     UserRole[]
+    employee     Employee?
 }
 
 
@@ -80,4 +81,20 @@ model RolePermission {
 
   @@id([roleId, permissionId])
     @@unique([roleId, permissionId], name: "roleId_permissionId")
+}
+
+
+model Employee {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName String
+  lastName  String
+  phone     String?
+
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

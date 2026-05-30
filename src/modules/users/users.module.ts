@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { CaslAbilityFactory } from 'src/common/casl/casl-ability.factory';
+import { CaslAbilityFactory } from '../../common/casl/casl-ability.factory';
 
 @Module({
   imports: [],

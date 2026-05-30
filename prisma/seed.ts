@@ -64,6 +64,12 @@ async function main() {
     create: { userId: adminUser.id, roleId: adminRole.id },
   });
 
+  await prisma.employee.upsert({
+  where: { userId: adminUser.id },
+  update: { isActive: true, firstName: 'Admin', lastName: 'User' },
+  create: { userId: adminUser.id, firstName: 'Admin', lastName: 'User', isActive: true },
+});
+
   console.log('Seed OK: admin role + manage:all + admin user ensured');
 }
 

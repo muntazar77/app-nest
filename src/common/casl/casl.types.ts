@@ -1,2 +1,2 @@
 export type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete';
-export type Subjects = 'User' | 'Role' | 'Permission' | 'all';
+export type Subjects = 'User' | 'Role' | 'Permission' | 'Employee' | 'all';

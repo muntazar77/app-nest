@@ -1,7 +1,7 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export const PERMISSION_ACTIONS = ['manage', 'create', 'read', 'update', 'delete'] as const;
-export const PERMISSION_SUBJECTS = ['all', 'User', 'Role', 'Permission', 'Post'] as const;
+export const PERMISSION_SUBJECTS = ['all', 'User', 'Role', 'Permission', 'Employee'] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 export type PermissionSubject = (typeof PERMISSION_SUBJECTS)[number];

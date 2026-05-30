@@ -51,11 +51,9 @@ export class PermissionsService {
 
 async remove(id: string) {
   const perm = await this.findOne(id);
-
   if (perm.action === 'manage' && perm.subject === 'all') {
-    throw new ForbiddenException('manage:all permission cannot be deleted');
+    throw new ForbiddenException("You can't delete manage:all");
   }
-
   return this.prisma.permission.delete({ where: { id } });
 }
 }
