@@ -35,23 +35,23 @@ export class RolesController {
   
 
     @Get()
-    findAll(@Query() q: PaginationDto,@CurrentUser() user: any,) {
+    findAll(@CurrentUser() user: any, @Query() q: PaginationDto) {
         return this.rolesService.findAll(user.orgId, q);
     }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.rolesService.findOne(id);
+  findOne(@CurrentUser() user: any,@Param('id') id: string) {
+    return this.rolesService.findOne(user.orgId, id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.update(id, dto);
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpdateRoleDto) {
+    return this.rolesService.update(user.orgId, id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.rolesService.remove(id);
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.rolesService.remove(user.orgId, id);
   }
 
   // @Post(':roleId/permissions/:permissionId')

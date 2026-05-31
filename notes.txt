@@ -113,3 +113,26 @@ const updated = await this.prisma.x.updateMany({
 if (updated.count === 0) throw new NotFoundException();
 
 This guarantees you never update another tenant’s record even لو عرف id.
+
+
+
+ Enforce orgId scoping in every module (audit pass)
+
+Do a quick audit of all services:
+
+    Users
+    Employees
+    Departments
+    Roles
+    Permissions (global, so no orgId)
+    Any join endpoints (role assignment, role-permissions)
+
+Checklist per method:
+
+    findMany has where: { orgId: user.orgId }
+    count uses same where
+    findFirst/findUnique includes orgId (or uses compound unique)
+    create sets orgId
+    update/delete either:
+        uses updateMany({ where: { id, orgId } }), or
+        verifies record belongs to org before update/delete

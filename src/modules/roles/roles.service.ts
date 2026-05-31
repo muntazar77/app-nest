@@ -46,9 +46,9 @@ export class RolesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(orgId: string, id: string) {
     const role = await this.prisma.role.findUnique({
-      where: { id },
+      where: { id, orgId },
       include: {
         rolePermissions: { include: { permission: true } },
         userRoles: { include: { user: { select: { id: true, email: true } } } },
@@ -58,22 +58,22 @@ export class RolesService {
     return role;
   }
 
-  async update(id: string, dto: UpdateRoleDto) {
-    await this.findOne(id);
+  async update(orgId: string, id: string, dto: UpdateRoleDto) {
+    await this.findOne(orgId, id);
     try {
-      return await this.prisma.role.update({ where: { id }, data: dto });
+      return await this.prisma.role.update({ where: { id, orgId }, data: dto });
     } catch (e: any) {
       if (e?.code === 'P2002')
         throw new BadRequestException('Role name already exists');
       throw e;
     }
   }
-  async remove(id: string) {
-    const role = await this.findOne(id);
+  async remove(orgId: string, id: string) {
+    const role = await this.findOne(orgId, id);
     if (role.isSystem === true || role.name === 'admin') {
       throw new ForbiddenException("You can't delete system roles");
     }
-    return this.prisma.role.delete({ where: { id } });
+    return this.prisma.role.delete({ where: { id, orgId } });
   }
 
   // --- RolePermission management ---
@@ -151,6 +151,6 @@ export class RolesService {
       }
     });
 
-    return this.findOne(roleId);
+    return this.findOne(role.orgId, roleId);
   }
 }
