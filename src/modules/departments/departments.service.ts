@@ -8,11 +8,11 @@ import { UpdateDepartmentDto } from './dto/update-department.dto';
 export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateDepartmentDto) {
+  async create(orgId: string,dto: CreateDepartmentDto) {
     // منع تكرار الاسم بطريقة واضحة
     const name = dto.name.trim().toLowerCase();
     const exists = await this.prisma.department.findUnique({
-      where: { orgId_department_name: { orgId: dto.orgId, name } },
+      where: { orgId_department_name: { orgId, name } },
     });
     if (exists) throw new BadRequestException('Department name already exists');
 
@@ -20,14 +20,14 @@ export class DepartmentsService {
       data: {
         name,
         title: dto.title ?? null,
-        org: { connect: { id: dto.orgId } },
+        org: { connect: { id: orgId } },
       },
     });
   }
 
-  async findAll({ page = 1, limit = 20 }: PaginationDto) {
+  async findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
     const skip = (page - 1) * limit;
-    const where = { isActive: true };
+    const where = { isActive: true, orgId };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.department.findMany({
@@ -45,16 +45,16 @@ export class DepartmentsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(orgId: string, id: string) {
     const dep = await this.prisma.department.findFirst({
-      where: { id, isActive: true },
+      where: { id, isActive: true, orgId },
     });
     if (!dep) throw new NotFoundException('Department not found');
     return dep;
   }
 
-  async update(id: string, dto: UpdateDepartmentDto) {
-    const current = await this.findOne(id);
+  async update(orgId: string, id: string, dto: UpdateDepartmentDto) {
+    const current = await this.findOne(orgId, id);
 
     // لو بتسمح بتغيير name: لازم تتحقق من unique
     if (dto.name) {
@@ -73,8 +73,8 @@ export class DepartmentsService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(orgId: string, id: string) {
+    await this.findOne(orgId, id);
 
     return this.prisma.department.update({
       where: { id },

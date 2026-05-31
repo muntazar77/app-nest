@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -73,5 +73,62 @@ export class AuthService {
     });
 
     return { accessToken };
+  }
+
+
+  async getMe(userId: string, orgId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, orgId, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        orgId: true,
+        createdAt: true,
+        updatedAt: true,
+        org: { select: { id: true, slug: true, name: true, isActive: true } },
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            department: { select: { id: true, name: true, title: true } },
+          },
+        },
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                title: true,
+                rolePermissions: {
+                  select: { permission: { select: { id: true, action: true, subject: true, title: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const roles = user.userRoles.map((ur) => ur.role);
+    const permissions = roles.flatMap((r) => r.rolePermissions.map((rp) => rp.permission));
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        orgId: user.orgId,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+      org: user.org,
+      employee: user.employee,
+      roles: roles.map((r) => ({ id: r.id, name: r.name, title: r.title })),
+      permissions,
+    };
   }
 }

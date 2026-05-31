@@ -1,0 +1,115 @@
+Rolle zu User hinzufügen
+POST http://localhost:3000/users/<USER_ID>/roles/<ROLE_ID> Headers:
+
+Rolle entfernen
+DELETE http://localhost:3000/users/<USER_ID>/roles/<ROLE_ID> Headers:
+
+User Rollen anzeigen
+GET http://localhost:3000/users/<USER_ID>/roles Headers:
+
+
+
+/permissions testen
+GET http://localhost:3000/permissions
+
+
+Wenn du hier 403 bekommst → dein User ist nicht Admin oder AbilityFactory lädt keine manage:all.
+C) Bulk update testen (richtiges HTTP verb!)
+PUT http://localhost:3000/roles/<roleId>/permissions
+Body:
+{ "permissionIds": ["permId1", "permId2"] }
+
+
+
+Organization/Tenant (إذا SaaS B2B)
+GET /me
+Health endpoint + logs
+إضافة “role for non-admin” وتوزيع permissions
+تثبيت DTOs/response contracts
+
+
+
+
+
+he best pattern for building future CRUD (Controller → Service)
+Controller pattern (recommended)
+
+Controllers should be thin: get orgId from current user and forward it.
+
+Example:
+ts
+
+@Post()
+create(@CurrentUser() u: any, @Body() dto: CreateXDto) {
+  return this.xService.create(u.orgId, dto);
+}
+
+@Get()
+findAll(@CurrentUser() u: any, @Query() q: PaginationDto) {
+  return this.xService.findAll(u.orgId, q);
+}
+
+@Get(':id')
+findOne(@CurrentUser() u: any, @Param('id') id: string) {
+  return this.xService.findOne(u.orgId, id);
+}
+
+@Patch(':id')
+update(@CurrentUser() u: any, @Param('id') id: string, @Body() dto: UpdateXDto) {
+  return this.xService.update(u.orgId, id, dto);
+}
+
+@Delete(':id')
+remove(@CurrentUser() u: any, @Param('id') id: string) {
+  return this.xService.remove(u.orgId, id);
+}
+
+Service pattern (recommended)
+
+Services enforce the tenant boundary.
+Create
+ts
+
+create(orgId: string, dto: CreateXDto) {
+  return this.prisma.x.create({
+    data: { orgId, ...dto },
+  });
+}
+
+FindAll (pagination + tenant scope)
+ts
+
+findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
+  const skip = (page - 1) * limit;
+
+  return this.prisma.$transaction([
+    this.prisma.x.findMany({ where: { orgId }, skip, take: limit }),
+    this.prisma.x.count({ where: { orgId } }),
+  ]);
+}
+
+FindOne (MUST include orgId)
+ts
+
+findOne(orgId: string, id: string) {
+  return this.prisma.x.findFirst({
+    where: { id, orgId, isActive: true },
+  });
+}
+
+Update/Delete (MUST include orgId)
+
+Important: do not update by { id } فقط. Either:
+
+    first findOne(orgId, id) then update by id or (better) use updateMany with { id, orgId } and check count.
+
+Example safe update:
+ts
+
+const updated = await this.prisma.x.updateMany({
+  where: { id, orgId },
+  data: { ...dto },
+});
+if (updated.count === 0) throw new NotFoundException();
+
+This guarantees you never update another tenant’s record even لو عرف id.

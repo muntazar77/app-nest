@@ -8,66 +8,95 @@ import bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-async create(orgId: string, dto: CreateUserDto) {
-  const passwordHash = await bcrypt.hash(dto.password, 10);
 
-  return this.prisma.user.create({
-    data: { orgId, email: dto.email, passwordHash, isActive: true },
-    select: { id: true, email: true, orgId: true, isActive: true, createdAt: true },
-  });
-}
+  async create(orgId: string, dto: CreateUserDto) {
+    const email = dto.email.trim().toLowerCase();
 
-async findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
-  const skip = (page - 1) * limit;
+    const exists = await this.prisma.user.findUnique({
+      where: { orgId_email: { orgId, email } },
+      select: { id: true },
+    });
+    if (exists) throw new BadRequestException('Email already in use');
 
-  const where = { isActive: true };
+    const passwordHash = await bcrypt.hash(dto.password, 12);
 
-  const [items, total] = await this.prisma.$transaction([
-    this.prisma.user.findMany({
-      where: { ...where, orgId },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        // لا ترجع passwordHash أبدًا
-      },
-    }),
-    this.prisma.user.count({ where: { ...where, orgId } }),
-  ]);
-
-  return {
-    items,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
-
-  findOne(id: string) {
-    return this.prisma.user.findFirst({
-      where: { id , isActive: true },
+    return this.prisma.user.create({
+      data: { orgId, email, passwordHash, isActive: true },
+      select: { id: true, orgId: true, email: true, isActive: true, createdAt: true, updatedAt: true },
     });
   }
 
-  update(id: string, data: any) {
+  async findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
+    const skip = (page - 1) * limit;
+
+    const where = { orgId, isActive: true };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, email: true, isActive: true, createdAt: true, updatedAt: true },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items,
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async findOne(orgId: string, id: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, orgId, isActive: true },
+      select: { id: true, email: true, isActive: true, createdAt: true, updatedAt: true },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async update(orgId: string, id: string, dto: UpdateUserDto) {
+    // safe update: ensure same org + active
+    const found = await this.prisma.user.findFirst({
+      where: { id, orgId, isActive: true },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('User not found');
+
+    // optional: support updating email
+    let email: string | undefined = undefined;
+    if (dto.email) email = dto.email.trim().toLowerCase();
+
+    // optional: support updating password
+    let passwordHash: string | undefined = undefined;
+    if (dto.password) passwordHash = await bcrypt.hash(dto.password, 12);
+
+    // if email changed, check unique within org
+    if (email) {
+      const conflict = await this.prisma.user.findUnique({
+        where: { orgId_email: { orgId, email } },
+        select: { id: true },
+      });
+      if (conflict && conflict.id !== id) throw new BadRequestException('Email already in use');
+    }
+
     return this.prisma.user.update({
-      where: { id , isActive: true },
-      data: data,
+      where: { id },
+      data: { email, passwordHash },
+      select: { id: true, email: true, isActive: true, createdAt: true, updatedAt: true },
     });
   }
 
- async remove(id: string) {
+
+
+
+ async remove(orgId: string, id: string) {
   // اختياري: لا تسمح بحذف admin نفسه أو آخر admin
   return this.prisma.user.update({
-    where: { id },
+    where: { id, orgId },
     data: { isActive: false },
   });
 }

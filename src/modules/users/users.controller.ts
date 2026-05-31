@@ -18,6 +18,7 @@ import { PoliciesGuard } from '../../common/guards/policies.guard';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @Controller('users')
@@ -30,30 +31,38 @@ export class UsersController {
     return this.usersService.create(user.orgId, dto);
   }
 
-  // @UseGuards(JwtAuthGuard)
   @CheckPolicies((ability) => ability.can('read', 'User'))
   @Get()
-  findAll(@Query() q: PaginationDto, @CurrentUser() user: any) {
+  findAll(@CurrentUser() user: any, @Query() q: PaginationDto) {
     return this.usersService.findAll(user.orgId, q);
   }
 
   @CheckPolicies((ability) => ability.can('read', 'User'))
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.usersService.findOne(user.orgId, id);
   }
 
+
+  
+ 
   @CheckPolicies((ability) => ability.can('update', 'User'))
   @Patch(':id')
-  update(@Param('id') id: string, @Body() bodyData: any) {
-    return this.usersService.update(id, bodyData);
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.usersService.update(user.orgId, id, dto);
   }
 
   @CheckPolicies((ability) => ability.can('delete', 'User'))
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.usersService.remove(user.orgId, id);
   }
+
+
+
+
+
+
 
   @CheckPolicies((ability) => ability.can('update', 'User'))
   @Post(':userId/roles/:roleId')
