@@ -4,9 +4,14 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) process.exit(1);
+if (!connectionString) {
+  console.error('DATABASE_URL is missing');
+  process.exit(1);
+}
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString }),
+});
 
 async function main() {
   const passwordHash = await bcrypt.hash('password123', 10);
@@ -14,24 +19,42 @@ async function main() {
   // 1) Ensure permissions (upsert by unique action+subject)
   const perms = [
     { action: 'manage', subject: 'all', title: 'Full access' },
+
     { action: 'read', subject: 'User', title: 'Read users' },
     { action: 'create', subject: 'User', title: 'Create users' },
     { action: 'update', subject: 'User', title: 'Update users' },
     { action: 'delete', subject: 'User', title: 'Delete users' },
+
     { action: 'read', subject: 'Role', title: 'Read roles' },
-    { action: 'manage', subject: 'Role', title: 'Manage roles' },
+    { action: 'create', subject: 'Role', title: 'Create roles' },
+    { action: 'update', subject: 'Role', title: 'Update roles' },
+    { action: 'delete', subject: 'Role', title: 'Delete roles' },
+
     { action: 'read', subject: 'Permission', title: 'Read permissions' },
-    { action: 'manage', subject: 'Permission', title: 'Manage permissions' },
+    { action: 'create', subject: 'Permission', title: 'Create permissions' },
+    { action: 'update', subject: 'Permission', title: 'Update permissions' },
+    { action: 'delete', subject: 'Permission', title: 'Delete permissions' },
+
+    { action: 'read', subject: 'Employee', title: 'Read employees' },
+    { action: 'create', subject: 'Employee', title: 'Create employees' },
+    { action: 'update', subject: 'Employee', title: 'Update employees' },
+    { action: 'delete', subject: 'Employee', title: 'Delete employees' },
+
+    { action: 'read', subject: 'Department', title: 'Read departments' },
+    { action: 'create', subject: 'Department', title: 'Create departments' },
+    { action: 'update', subject: 'Department', title: 'Update departments' },
+    { action: 'delete', subject: 'Department', title: 'Delete departments' },
   ] as const;
 
-  const created: Awaited<ReturnType<typeof prisma.permission.upsert>>[] = [];
+  const createdPerms: Awaited<ReturnType<typeof prisma.permission.upsert>>[] = [];
+
   for (const p of perms) {
     const perm = await prisma.permission.upsert({
       where: { action_subject: { action: p.action, subject: p.subject } },
       update: { title: p.title ?? null },
       create: { action: p.action, subject: p.subject, title: p.title ?? null },
     });
-    created.push(perm);
+    createdPerms.push(perm);
   }
 
   // 2) Ensure admin role
@@ -41,8 +64,8 @@ async function main() {
     create: { name: 'admin', title: 'Administrator', isSystem: true },
   });
 
-  // 3) Ensure manage:all attached to admin
-  const manageAll = created.find((x) => x.action === 'manage' && x.subject === 'all');
+  // 3) Ensure manage:all attached to admin role
+  const manageAll = createdPerms.find((x) => x.action === 'manage' && x.subject === 'all');
   if (!manageAll) throw new Error('manage:all permission missing');
 
   await prisma.rolePermission.upsert({
@@ -51,13 +74,19 @@ async function main() {
     create: { roleId: adminRole.id, permissionId: manageAll.id },
   });
 
-  // 4) Ensure admin user + assign admin role
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: {}, // optional: don't overwrite password automatically
-    create: { email: 'admin@example.com', passwordHash },
+  // 4) Ensure default department
+  const generalDepartment = await prisma.department.upsert({
+    where: { name: 'general' },
+    update: { isActive: true, title: 'General' },
+    create: { name: 'general', title: 'General', isActive: true },
   });
 
+  // 5) Ensure admin user + assign admin role
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: { isActive: true }, // do not overwrite password automatically
+    create: { email: 'admin@example.com', passwordHash, isActive: true },
+  });
 
   await prisma.userRole.upsert({
     where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
@@ -65,31 +94,63 @@ async function main() {
     create: { userId: adminUser.id, roleId: adminRole.id },
   });
 
-  // 4b) Ensure regular user
+  // 6) Ensure regular user (non-admin)
   const regularUser = await prisma.user.upsert({
     where: { email: 'user@example.com' },
-    update: {},
-    create: { email: 'user@example.com', passwordHash },
+    update: { isActive: true },
+    create: { email: 'user@example.com', passwordHash, isActive: true },
+  });
+
+  // 7) Ensure employees exist and ALWAYS have departmentId
+  await prisma.employee.upsert({
+    where: { userId: adminUser.id },
+    update: {
+      isActive: true,
+      firstName: 'Admin',
+      lastName: 'User',
+      departmentId: generalDepartment.id,
+    },
+    create: {
+      userId: adminUser.id,
+      firstName: 'Admin',
+      lastName: 'User',
+      isActive: true,
+      departmentId: generalDepartment.id,
+    },
   });
 
   await prisma.employee.upsert({
     where: { userId: regularUser.id },
-    update: { isActive: true, firstName: 'Regular', lastName: 'User' },
-    create: { userId: regularUser.id, firstName: 'Regular', lastName: 'User', isActive: true },
+    update: {
+      isActive: true,
+      firstName: 'Regular',
+      lastName: 'User',
+      departmentId: generalDepartment.id,
+    },
+    create: {
+      userId: regularUser.id,
+      firstName: 'Regular',
+      lastName: 'User',
+      isActive: true,
+      departmentId: generalDepartment.id,
+    },
   });
 
-  await prisma.employee.upsert({
-  where: { userId: adminUser.id },
-  update: { isActive: true, firstName: 'Admin', lastName: 'User' },
-  create: { userId: adminUser.id, firstName: 'Admin', lastName: 'User', isActive: true },
-});
+  // 8) Backfill any existing employee rows missing departmentId (if you ever ran older schema)
+  // Use explicit filter to match null departmentId to satisfy Prisma typings
+  // await prisma.employee.updateMany({
+  //   where: { departmentId: null },
+  //   data: { departmentId: generalDepartment.id },
+  // });
 
-  console.log('Seed OK: admin role + manage:all + admin user ensured');
+  console.log('Seed OK: permissions + admin role + users + default department + employees ensured');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
-  .finally(async () => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

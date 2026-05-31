@@ -10,6 +10,7 @@ import { CaslAbilityFactory } from './common/casl/casl-ability.factory';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { EmployeesModule } from './modules/employees/employees.module';
+import { DepartmentsModule } from './modules/departments/departments.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
     PermissionsModule,
     RolesModule,
     EmployeesModule,
+    DepartmentsModule,
   ],
   controllers: [],
   providers: [PrismaService, CaslAbilityFactory],

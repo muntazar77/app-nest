@@ -21,24 +21,24 @@ describe('RBAC (e2e)', () => {
   // const adminCreds = { email: 'admin@example.com', passwordHash: 'password123' };
   // const userCreds = { email: 'user@example.com', passwordHash: 'password123' };
 
-  beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
 
-    app = moduleRef.createNestApplication();
+beforeAll(async () => {
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
 
-    // only if you use class-validator DTOs; safe to keep
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true,
-        forbidNonWhitelisted: true,
-      }),
-    );
+  app = moduleRef.createNestApplication();
 
-    await app.init();
-  });
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  await app.init();
+});
 
   afterAll(async () => {
     await app.close();
@@ -91,20 +91,25 @@ describe('RBAC (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    const roles = rolesRes.body as Array<{ id: string; name: string }>;
-    const adminRole = roles.find((r) => r.name === 'admin');
+const roles = (rolesRes.body.items ?? rolesRes.body) as Array<{ id: string; name: string }>;
+const adminRole = roles.find((r) => r.name === 'admin');
     expect(adminRole).toBeDefined();
 
     // 2) attempt to set permissions WITHOUT manage:all -> must be forbidden
     // We'll pick a harmless permission id from GET /permissions that is NOT manage:all
-    const permsRes = await request(app.getHttpServer())
-      .get('/permissions')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .expect(200);
+ const permsRes = await request(app.getHttpServer())
+  .get('/permissions?page=1&limit=200')
+  .set('Authorization', `Bearer ${adminToken}`)
+  .expect(200);
 
-    const perms = permsRes.body as Array<{ id: string; action: string; subject: string }>;
-    const nonManageAll = perms.find((p) => !(p.action === 'manage' && p.subject === 'all'));
-    expect(nonManageAll).toBeDefined();
+const perms = (permsRes.body.items ?? permsRes.body) as Array<{
+  id: string;
+  action: string;
+  subject: string;
+}>;
+
+const nonManageAll = perms.find((p) => !(p.action === 'manage' && p.subject === 'all'));
+expect(nonManageAll).toBeDefined();
 
     await request(app.getHttpServer())
       .put(`/roles/${adminRole!.id}/permissions`)

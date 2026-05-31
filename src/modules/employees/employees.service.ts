@@ -18,14 +18,21 @@ export class EmployeesService {
     const existing = await this.prisma.employee.findUnique({ where: { userId: dto.userId } });
     if (existing) throw new BadRequestException('Employee already exists for this user');
 
+    const dep = await this.prisma.department.findFirst({
+  where: { id: dto.departmentId, isActive: true },
+});
+if (!dep) throw new BadRequestException('Department not found');
+
     return this.prisma.employee.create({
       data: {
         userId: dto.userId,
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
+        departmentId: dto.departmentId,
       },
-      include: { user: { select: { id: true, email: true } } },
+      include: { user: { select: { id: true, email: true } },
+      department: true, },
     });
   }
 

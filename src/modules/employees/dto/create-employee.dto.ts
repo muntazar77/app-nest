@@ -16,4 +16,7 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   phone?: string;
-}
+
+
+  @IsString()
+  departmentId!: string;}
