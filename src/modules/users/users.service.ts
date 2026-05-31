@@ -17,14 +17,14 @@ async create(orgId: string, dto: CreateUserDto) {
   });
 }
 
-async findAll({ page = 1, limit = 20 }: PaginationDto) {
+async findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
   const skip = (page - 1) * limit;
 
   const where = { isActive: true };
 
   const [items, total] = await this.prisma.$transaction([
     this.prisma.user.findMany({
-      where,
+      where: { ...where, orgId },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -37,7 +37,7 @@ async findAll({ page = 1, limit = 20 }: PaginationDto) {
         // لا ترجع passwordHash أبدًا
       },
     }),
-    this.prisma.user.count({ where }),
+    this.prisma.user.count({ where: { ...where, orgId } }),
   ]);
 
   return {

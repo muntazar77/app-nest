@@ -33,8 +33,8 @@ export class UsersController {
   // @UseGuards(JwtAuthGuard)
   @CheckPolicies((ability) => ability.can('read', 'User'))
   @Get()
-  findAll(@Query() q: PaginationDto) {
-    return this.usersService.findAll(q);
+  findAll(@Query() q: PaginationDto, @CurrentUser() user: any) {
+    return this.usersService.findAll(user.orgId, q);
   }
 
   @CheckPolicies((ability) => ability.can('read', 'User'))
