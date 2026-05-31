@@ -1,4 +1,9 @@
-import { Injectable,NotFoundException ,BadRequestException ,ForbiddenException} from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -6,53 +11,38 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class RolesService {
-  constructor(private prisma : PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
+  async create(orgId: string, dto: CreateRoleDto) {
+    const name = dto.name.trim().toLowerCase();
 
+    const exists = await this.prisma.role.findUnique({
+      where: { orgId_role_name: { orgId, name } },
+      select: { id: true },
+    });
+    if (exists) throw new BadRequestException('Role name already exists');
 
-  async create(dto: CreateRoleDto) {
-    try {
-      return await this.prisma.role.create({ data: dto });
-    } catch (e: any) {
-      if (e?.code === 'P2002') throw new BadRequestException('Role name already exists');
-      throw e;
-    }
+    return this.prisma.role.create({
+      data: { orgId, name, title: dto.title ?? null, isSystem: false },
+    });
   }
-
-  // findAll() {
-  //   return this.prisma.role.findMany({
-  //     orderBy: { name: 'asc' },
-  //     include: {
-  //       rolePermissions: { include: { permission: true } },
-  //       userRoles: { include: { user: { select: { id: true, email: true } } } },
-  //     },
-  //   });
-  // }
-
-  async findAll({ page = 1, limit = 20 }: PaginationDto) {
+ 
+  async findAll(orgId: string, { page = 1, limit = 20 }: PaginationDto) {
     const skip = (page - 1) * limit;
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.role.findMany({
+        where: { orgId },
         skip,
         take: limit,
-        orderBy: { name: 'asc' },
-        include: {
-          rolePermissions: { include: { permission: true } },
-          userRoles: { include: { user: { select: { id: true, email: true } } } },
-        },
+        orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.role.count(),
+      this.prisma.role.count({ where: { orgId } }),
     ]);
 
     return {
       items,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -68,13 +58,13 @@ export class RolesService {
     return role;
   }
 
-
   async update(id: string, dto: UpdateRoleDto) {
     await this.findOne(id);
     try {
       return await this.prisma.role.update({ where: { id }, data: dto });
     } catch (e: any) {
-      if (e?.code === 'P2002') throw new BadRequestException('Role name already exists');
+      if (e?.code === 'P2002')
+        throw new BadRequestException('Role name already exists');
       throw e;
     }
   }
@@ -85,8 +75,6 @@ export class RolesService {
     }
     return this.prisma.role.delete({ where: { id } });
   }
-
-
 
   // --- RolePermission management ---
   // async attachPermission(roleId: string, permissionId: string) {
@@ -114,53 +102,55 @@ export class RolesService {
   //   });
   // }
 
+  // roles.service.ts
 
-// roles.service.ts
+  async setPermissions(roleId: string, permissionIds: string[]) {
+    const ids = [...new Set(permissionIds)]; // remove duplicates
 
-async setPermissions(roleId: string, permissionIds: string[]) {
-  const ids = [...new Set(permissionIds)]; // remove duplicates
+    // check role exists
+    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
+    if (!role) throw new BadRequestException('Role not found');
 
-  // check role exists
-  const role = await this.prisma.role.findUnique({ where: { id: roleId } });
-  if (!role) throw new BadRequestException('Role not found');
-
-  // find manage:all permission (required for admin/system)
-  const manageAll = await this.prisma.permission.findUnique({
-    where: { action_subject: { action: 'manage', subject: 'all' } }, // uses your @@unique([action, subject])
-    select: { id: true },
-  });
-  if (!manageAll) {
-    throw new BadRequestException('System misconfigured: manage:all permission not found');
-  }
-
-  // protect admin/system role from losing manage:all
-  if (role.name === 'admin' || role.isSystem) {
-    if (!ids.includes(manageAll.id)) {
-      throw new ForbiddenException("You can't remove manage:all from admin/system role");
+    // find manage:all permission (required for admin/system)
+    const manageAll = await this.prisma.permission.findUnique({
+      where: { action_subject: { action: 'manage', subject: 'all' } }, // uses your @@unique([action, subject])
+      select: { id: true },
+    });
+    if (!manageAll) {
+      throw new BadRequestException(
+        'System misconfigured: manage:all permission not found',
+      );
     }
-  }
 
-  // check all permissions exist
-  const found = await this.prisma.permission.findMany({
-    where: { id: { in: ids } },
-    select: { id: true },
-  });
-  if (found.length !== ids.length) {
-    throw new BadRequestException('One or more permissionIds are invalid');
-  }
-
-  await this.prisma.$transaction(async (tx) => {
-    await tx.rolePermission.deleteMany({ where: { roleId } });
-
-    if (ids.length > 0) {
-      await tx.rolePermission.createMany({
-        data: ids.map((permissionId) => ({ roleId, permissionId })),
-        skipDuplicates: true,
-      });
+    // protect admin/system role from losing manage:all
+    if (role.name === 'admin' || role.isSystem) {
+      if (!ids.includes(manageAll.id)) {
+        throw new ForbiddenException(
+          "You can't remove manage:all from admin/system role",
+        );
+      }
     }
-  });
 
-  return this.findOne(roleId);
-}
+    // check all permissions exist
+    const found = await this.prisma.permission.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+    if (found.length !== ids.length) {
+      throw new BadRequestException('One or more permissionIds are invalid');
+    }
 
+    await this.prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId } });
+
+      if (ids.length > 0) {
+        await tx.rolePermission.createMany({
+          data: ids.map((permissionId) => ({ roleId, permissionId })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    return this.findOne(roleId);
+  }
 }

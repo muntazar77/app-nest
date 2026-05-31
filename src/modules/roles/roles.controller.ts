@@ -8,7 +8,8 @@ import {
   Delete,
   UseGuards,
   Put,
-  Query
+  Query,
+  Req
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PoliciesGuard } from 'src/common/guards/policies.guard';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @CheckPolicies((ability) => ability.can('read', 'all'))
@@ -26,15 +28,15 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  create(@Body() dto: CreateRoleDto) {
-    return this.rolesService.create(dto);
+   create(@CurrentUser() user: any,  @Body() dto: CreateRoleDto) {
+    return this.rolesService.create(user.orgId, dto);
   }
 
   
 
     @Get()
-    findAll(@Query() q: PaginationDto) {
-        return this.rolesService.findAll(q);
+    findAll(@Query() q: PaginationDto,@CurrentUser() user: any,) {
+        return this.rolesService.findAll(user.orgId, q);
     }
 
   @Get(':id')

@@ -13,4 +13,7 @@ export class CreateRoleDto {
   @IsOptional()
   @IsBoolean()
   isSystem?: boolean;
+
+  @IsString()
+  orgId!: string;
 }

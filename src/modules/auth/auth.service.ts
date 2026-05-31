@@ -13,33 +13,64 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    //first check if email is already in use
-    const existUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const org = await this.prisma.organization.findFirst({
+      where: { slug: dto.orgSlug, isActive: true },
+      select: { id: true, slug: true, name: true },
+    });
+    if (!org) throw new BadRequestException('Organization not found');
+
+    // unique within org
+    const existUser = await this.prisma.user.findFirst({
+      where: { orgId: org.id, email: dto.email, isActive: true },
+      select: { id: true },
+    });
     if (existUser) throw new BadRequestException('Email already in use');
 
-    const passwordHash = await bcrypt.hash(dto.passwordHash, 12);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash },
-      select: { id: true, email: true, createdAt: true },
+      data: {
+        orgId: org.id,
+        email: dto.email,
+        passwordHash,
+        isActive: true,
+      },
+      select: { id: true, email: true, orgId: true, createdAt: true },
+    });
+
+    const accessToken = await this.jwt.signAsync({
+      sub: user.id,
+      email: user.email,
+      orgId: user.orgId,
     });
 
     return {
-      accessToken: await this.jwt.signAsync({ sub: user.id, email: user.email }),
+      accessToken,
       user,
+      org,
     };
   }
 
   async login(dto: LoginDto) {
-    // في MVP: identifier = email
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: dto.email,
+        isActive: true,
+        org: { slug: dto.orgSlug, isActive: true },
+      },
+      select: { id: true, email: true, orgId: true, passwordHash: true },
+    });
+
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const ok = await bcrypt.compare(dto.passwordHash, user.passwordHash);
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
-    const payload = { sub: user.id, email: user.email };
-    const accessToken = await this.jwt.signAsync(payload);
+    const accessToken = await this.jwt.signAsync({
+      sub: user.id,
+      email: user.email,
+      orgId: user.orgId,
+    });
 
     return { accessToken };
   }

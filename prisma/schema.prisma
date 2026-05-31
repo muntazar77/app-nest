@@ -7,48 +7,70 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  // role         String   @default("USER")
-    isActive     Boolean  @default(true)
-  userRoles     UserRole[]
-    employee     Employee?
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  employees   Employee[]
+  departments Department[]
+  roles       Role[]
+
 }
 
+model User {
+  id           String       @id @default(cuid())
+  email        String       
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  // role         String   @default("USER")
+  isActive     Boolean      @default(true)
+  userRoles    UserRole[]
+  employee     Employee?
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
+  @@unique([orgId, email], name: "orgId_email")
+}
 
 model Role {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id        String @id @default(cuid())
+  orgId String
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  name      String
   title     String?
-  isSystem  Boolean  @default(false)
+  isSystem  Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   userRoles       UserRole[]
   rolePermissions RolePermission[]
+
+  @@unique([orgId, name], name: "orgId_role_name")
 }
 
 model Permission {
-  id        String @id @default(cuid())
-  action    String // e.g. "create", "read", "update", "delete", "manage"
-  subject   String // e.g. "User", "Role", "Employee"
-  title     String?
+  id      String @id @default(cuid())
+  action  String
+  subject String
+  title   String?
 
   rolePermissions RolePermission[]
 
-  // @@unique([action, subject])
-    @@unique([action, subject], name: "action_subject")
+  @@unique([action, subject], name: "action_subject")
 }
+
 
 model UserRole {
   userId String
@@ -57,8 +79,9 @@ model UserRole {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-   @@id([userId, roleId])
-    @@unique([userId, roleId], name: "userId_roleId")
+  @@id([userId, roleId])
+  @@unique([userId, roleId], name: "userId_roleId")
+  
 }
 
 model RolePermission {
@@ -69,38 +92,42 @@ model RolePermission {
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
-    @@unique([roleId, permissionId], name: "roleId_permissionId")
+  @@unique([roleId, permissionId], name: "roleId_permissionId")
 }
 
-
 model Employee {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   firstName String
   lastName  String
   phone     String?
 
-  isActive  Boolean  @default(true)
- 
-  departmentId String        
-  department   Department     @relation(fields: [departmentId], references: [id])
+  isActive Boolean @default(true)
 
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
 
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
 model Department {
-  id        String    @id @default(cuid())
-  name      String    @unique
+  id        String   @id @default(cuid())
+  name      String   
   title     String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   employees Employee[]
+
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name], name: "orgId_department_name")
 }

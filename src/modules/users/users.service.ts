@@ -3,21 +3,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
-
+import bcrypt from 'bcrypt';
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: any) {
-    
-    const res = this.prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash: data.passwordHash,
-      },
-    });
-    return res;
-  }
+async create(orgId: string, dto: CreateUserDto) {
+  const passwordHash = await bcrypt.hash(dto.password, 10);
+
+  return this.prisma.user.create({
+    data: { orgId, email: dto.email, passwordHash, isActive: true },
+    select: { id: true, email: true, orgId: true, isActive: true, createdAt: true },
+  });
+}
 
 async findAll({ page = 1, limit = 20 }: PaginationDto) {
   const skip = (page - 1) * limit;

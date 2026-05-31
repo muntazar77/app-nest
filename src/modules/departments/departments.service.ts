@@ -10,12 +10,18 @@ export class DepartmentsService {
 
   async create(dto: CreateDepartmentDto) {
     // منع تكرار الاسم بطريقة واضحة
-    dto.name.trim().toLowerCase();
-    const exists = await this.prisma.department.findUnique({ where: { name: dto.name } });
+    const name = dto.name.trim().toLowerCase();
+    const exists = await this.prisma.department.findUnique({
+      where: { orgId_department_name: { orgId: dto.orgId, name } },
+    });
     if (exists) throw new BadRequestException('Department name already exists');
 
     return this.prisma.department.create({
-      data: { name: dto.name, title: dto.title ?? null },
+      data: {
+        name,
+        title: dto.title ?? null,
+        org: { connect: { id: dto.orgId } },
+      },
     });
   }
 
@@ -48,12 +54,17 @@ export class DepartmentsService {
   }
 
   async update(id: string, dto: UpdateDepartmentDto) {
-    await this.findOne(id);
+    const current = await this.findOne(id);
 
     // لو بتسمح بتغيير name: لازم تتحقق من unique
     if (dto.name) {
-      const conflict = await this.prisma.department.findUnique({ where: { name: dto.name } });
+      const name = dto.name.trim().toLowerCase();
+      const conflict = await this.prisma.department.findUnique({
+        where: { orgId_department_name: { orgId: current.orgId, name } },
+      });
       if (conflict && conflict.id !== id) throw new BadRequestException('Department name already exists');
+
+      dto.name = name;
     }
 
     return this.prisma.department.update({

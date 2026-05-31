@@ -1,10 +1,13 @@
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
+  @IsString()
+  orgSlug: string;
+
   @IsEmail()
-  email!: string;
+  email: string;
 
   @IsString()
-  @MinLength(6)
-  passwordHash!: string;
+  @MinLength(8)
+  password: string;
 }

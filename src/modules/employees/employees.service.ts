@@ -30,6 +30,7 @@ if (!dep) throw new BadRequestException('Department not found');
         lastName: dto.lastName,
         phone: dto.phone,
         departmentId: dto.departmentId,
+        orgId: dto.orgId,
       },
       include: { user: { select: { id: true, email: true } },
       department: true, },

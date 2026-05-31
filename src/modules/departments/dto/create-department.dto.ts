@@ -8,4 +8,7 @@ export class CreateDepartmentDto {
   @IsOptional()
   @IsString()
   title?: string;
+
+  @IsString()
+  orgId!: string;
 }

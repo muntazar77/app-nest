@@ -19,4 +19,8 @@ export class CreateEmployeeDto {
 
 
   @IsString()
-  departmentId!: string;}
+  departmentId!: string;
+
+  @IsString()
+  orgId!: string;
+}
