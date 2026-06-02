@@ -26,7 +26,14 @@ GET /me
 Health endpoint + logs
 إضافة “role for non-admin” وتوزيع permissions
 تثبيت DTOs/response contracts
-
+4) Add “invite user” workflow (SaaS core)
+5) Add audit logging (basic)
+ Rate limiting على تسجيل الدخول + endpoints الحساسة
+ Helmet + Security headers
+3) CORS Allowlist (لا تفتحها على *)
+5) Global exception filter + Error response format موحّد
+6) Logging احترافي + Request ID
+7) Health check endpoint /health
 
 
 

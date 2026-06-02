@@ -3,14 +3,15 @@ import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { send } from 'process';
 
 type LoginResponse = { accessToken: string };
 
 describe('Departments RBAC (e2e)', () => {
   let app: INestApplication;
 
-  const adminCreds = { email: 'admin@example.com', password: 'password123' };
-  const userCreds = { email: 'user@example.com', password: 'password123' };
+  const adminCreds = { email: 'admin@acme.test', password: 'password123' };
+  const userCreds = { email: 'user@acme.test', password: 'password123' };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -32,28 +33,16 @@ describe('Departments RBAC (e2e)', () => {
     await app.close();
   });
 
-async function login(email: string): Promise<string> {
-  const password = 'password123';
-
-  // try (email,password) first
-  let res = await request(app.getHttpServer())
+async function login(email: string, orgSlug = 'acme'): Promise<string> {
+  const res = await request(app.getHttpServer())
     .post('/auth/login')
-    .send({ email, password });
+    .send({
+      orgSlug,
+      email,
+      password: 'password123',
+    })
+    .expect(201);
 
-  // fallback to (email,passwordHash) if your DTO is weirdly named
-  if (res.status === 400) {
-    res = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, passwordHash: password });
-  }
-
-  if (res.status !== 201) {
-    // print body so you see the real validation error
-    // eslint-disable-next-line no-console
-    console.log('LOGIN FAILED', res.status, res.body);
-  }
-
-  expect(res.status).toBe(201);
   expect(res.body).toHaveProperty('accessToken');
   return res.body.accessToken as string;
 }
@@ -72,6 +61,7 @@ async function login(email: string): Promise<string> {
       .expect(403);
   });
 
+  
   it('Admin can create department -> 201, list it, soft-delete it, and it disappears from list', async () => {
     const adminToken = await login(adminCreds.email);
 
