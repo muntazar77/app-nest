@@ -23,6 +23,7 @@ model Organization {
   employees   Employee[]
   departments Department[]
   roles       Role[]
+  invites     UserInvite[]
 
 }
 
@@ -42,6 +43,22 @@ model User {
   @@unique([orgId, email], name: "orgId_email")
 }
 
+model UserInvite {
+  id             String   @id @default(cuid())
+  orgId          String
+  org            Organization @relation(fields: [orgId], references: [id])
+
+  email          String
+  tokenHash      String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdByUserId String
+  createdAt      DateTime @default(now())
+
+  @@index([orgId, email])
+  @@index([orgId, expiresAt])
+  @@unique([orgId, email, usedAt]) // يسمح بدعوة جديدة بعد ما القديمة تُستخدم
+}
 model Role {
   id        String @id @default(cuid())
   orgId String

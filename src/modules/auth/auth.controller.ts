@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Throttle } from '@nestjs/throttler';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,4 +28,10 @@ export class AuthController {
   me(@CurrentUser() user: any) {
     return this.auth.getMe(user.id, user.orgId);
   }
+
+
+  @Post('set-password')
+setPassword(@Body() dto: SetPasswordDto) {
+  return this.auth.setPassword(dto);
+}
 }
